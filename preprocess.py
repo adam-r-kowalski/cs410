@@ -1,10 +1,11 @@
 # %% imports
 import pandas as pd
 from datetime import timedelta
+from typing import Mapping
 
 
 # %% read_csv
-def read_csv(filename, columns):
+def read_csv(filename: str, columns: Mapping[str, str]) -> pd.DataFrame:
     df = pd.read_csv(filename, usecols=columns.keys())
     df.rename(columns=columns, inplace=True)
     return df
@@ -36,12 +37,27 @@ loop_data = read_csv(
     })
 
 
+# %% insert row into dataframe
+def insert_row(df, row):
+    df.loc[-1] = row
+    df.index += 1
+    df.sort_index(inplace=True)
+
+
+# %% speeds greater than 100
+def speeds_greater_than_100():
+    speeds = pd.DataFrame(columns=['highspeed:count'])
+    insert_row(
+        speeds, (loop_data['loopdata:speed'].dropna().values > 100).sum())
+    return speeds
+
+
 # %% loop data start time
 loop_data_start_time = loop_data['loopdata:starttime']
 
 
 # %% loop data in date range
-def loop_data_in_date_range(start_date, end_date,
+def loop_data_in_date_range(start_date: str, end_date: str,
                             loop_data=loop_data,
                             loop_data_start_time=loop_data_start_time):
     lower_bound = loop_data_start_time >= start_date
@@ -63,13 +79,6 @@ def foster_station_volume_september_21():
 
 
 foster_station_volume = foster_station_volume_september_21()
-
-
-# %% insert row into dataframe
-def insert_row(df, row):
-    df.loc[-1] = row
-    df.index += 1
-    df.sort_index(inplace=True)
 
 
 # %% add minutes to time
@@ -94,7 +103,7 @@ def foster_station_travel_times_september_22():
     filtered_loop_data_start_time = filtered_loop_data['loopdata:starttime']
 
     # TODO: remove hard coded minutes
-    interval_time = add_time_to_interval(start_time, minutes=1)
+    interval_time = add_minutes_to_time(start_time, minutes=1)
 
     while start_time < end_time:
         interval_data = loop_data_in_date_range(
@@ -109,6 +118,7 @@ def foster_station_travel_times_september_22():
 
         start_time = interval_time
 
+        # TODO: remove hard coded minutes
         interval_time = add_minutes_to_time(start_time, minutes=1)
 
     return foster_station_travel_times

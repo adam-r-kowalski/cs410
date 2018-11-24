@@ -46,10 +46,12 @@ def insert_row(df, row):
 
 # %% speeds greater than 100
 def speeds_greater_than_100():
-    speeds = pd.DataFrame(columns=['highspeed:count'])
-    insert_row(
-        speeds, (loop_data['loopdata:speed'].dropna().values > 100).sum())
-    return speeds
+    return pd.DataFrame(
+        [(loop_data['loopdata:speed'].dropna().values > 100).sum()],
+        columns=['highspeed:count'])
+
+
+high_speed = speeds_greater_than_100()
 
 
 # %% loop data start time
@@ -87,13 +89,10 @@ def add_minutes_to_time(time, minutes=5):
     return new_time.strftime("%-m/%d/%Y %-H:%M:%S")
 
 
-# %% foster station travel times september 22, TODO: change dates, refactor code?
-def foster_station_travel_times_september_22():
-    foster_station_travel_times = pd.DataFrame(
-        columns=['fosterstation:starttime', 'fosterstation:traveltime'])
-
-    start_time = '9/15/2011 0:10:00'
-    end_time = '9/15/2011 0:20:00'
+# %% mean travel times between time periods
+def mean_travel_times_between_time_periods(data_frame: pd.DataFrame,
+                                           start_time: str, end_time: str,
+                                           interval: int) -> pd.DataFrame:
     filtered_loop_data = loop_data_in_date_range(start_time, end_time)
 
     _, foster_station_length = (stations
@@ -102,8 +101,7 @@ def foster_station_travel_times_september_22():
 
     filtered_loop_data_start_time = filtered_loop_data['loopdata:starttime']
 
-    # TODO: remove hard coded minutes
-    interval_time = add_minutes_to_time(start_time, minutes=1)
+    interval_time = add_minutes_to_time(start_time, minutes=interval)
 
     while start_time < end_time:
         interval_data = loop_data_in_date_range(
@@ -113,18 +111,51 @@ def foster_station_travel_times_september_22():
         mean_speed = interval_data['loopdata:speed'].dropna().values.mean()
 
         # TODO: convert mean speed from mph to mps and report travel time in seconds
-        insert_row(foster_station_travel_times,
-                   [start_time, mean_speed / foster_station_length])
+        insert_row(data_frame,
+                   [start_time, foster_station_length / mean_speed * 3600])
 
         start_time = interval_time
 
-        # TODO: remove hard coded minutes
-        interval_time = add_minutes_to_time(start_time, minutes=1)
+        interval_time = add_minutes_to_time(start_time, minutes=interval)
 
-    return foster_station_travel_times
+    return data_frame
+
+
+# %% foster station travel times september 22, TODO: change dates, refactor code?
+def foster_station_travel_times_september_22():
+    foster_station_travel_times = pd.DataFrame(
+        columns=['fosterstation:starttime', 'fosterstation:traveltime'])
+
+    return mean_travel_times_between_time_periods(
+        foster_station_travel_times,
+        start_time='9/15/2011 0:10:00',
+        end_time='9/15/2011 0:20:00',
+        interval=1)
 
 
 foster_station_travel_times = foster_station_travel_times_september_22()
+
+
+# %% foster station peak travel times, TODO: change dates, refactor code?
+def foster_station_peak_travel_times_september_22() -> pd.DataFrame:
+    foster_station_travel_times = pd.DataFrame(
+        columns=['fosterstation:peakperiod', 'fosterstation:traveltime'])
+
+    # change time peroids to 7am 9am and interval to 120
+    mean_travel_times_between_time_periods(
+        foster_station_travel_times,
+        start_time='9/15/2011 0:10:00',
+        end_time='9/15/2011 0:20:00',
+        interval=10)
+
+    return mean_travel_times_between_time_periods(
+        foster_station_travel_times,
+        start_time='9/15/2011 0:30:00',
+        end_time='9/15/2011 0:40:00',
+        interval=10)
+
+
+peak_travel_times = foster_station_peak_travel_times_september_22()
 
 
 # %% visualize
@@ -135,7 +166,12 @@ detectors.head()
 loop_data.head()
 
 
+high_speed.head()
+
 foster_station_volume.head()
 
 
 foster_station_travel_times.head()
+
+
+peak_travel_times.head()
